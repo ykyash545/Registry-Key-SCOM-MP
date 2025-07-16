@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ManagementPack
+  ContentReadable="true"
+  xmlns="http://schemas.microsoft.com/SystemCenter/2007/OperationsManager/Authoring"
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+  <Manifest>
+    <Identity>
+      <ID>RegistryKeyPROD</ID>
+      <Version>1.1.0.0</Version>
+    </Identity>
+    <Name>RegistryKeyPROD</Name>
+    <References>
+      <Reference Alias="SC">
+        <ID>Microsoft.SystemCenter.Library</ID>
+        <Version>6.0.3601.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="Windows">
+        <ID>Microsoft.Windows.Library</ID>
+        <Version>6.0.3601.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="Health">
+        <ID>System.Health.Library</ID>
+        <Version>6.0.3601.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="System">
+        <ID>System.Library</ID>
+        <Version>6.0.3601.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+    </References>
+  </Manifest>
+
+  <TypeDefinitions>
+    <MonitorTypes>
+      <UnitMonitorType Accessibility="Internal" ID="RegistryKeyPROD.CustomUnitMonitorType">
+        <MonitorTypeStates>
+          <MonitorTypeState ID="Registry Address Present" />
+          <MonitorTypeState ID="Registry Address not Present" />
+        </MonitorTypeStates>
+        <Configuration>
+          <xsd:element name="ComputerName"   type="xsd:string" />
+          <xsd:element name="RegistryPath"   type="xsd:string" />
+          <xsd:element name="AttributeName"  type="xsd:string" />
+          <xsd:element name="Pattern"        type="xsd:string" />
+          <xsd:element name="Frequency"      type="xsd:unsignedInt" />
+        </Configuration>
+        <MonitorImplementation>
+          <MemberModules>
+            <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.RegistryProvider">
+              <ComputerName>$Config/ComputerName$</ComputerName>
+              <RegistryAttributeDefinitions>
+                <RegistryAttributeDefinition>
+                  <AttributeName>$Config/AttributeName$</AttributeName>
+                  <Path>$Config/RegistryPath$</Path>
+                  <PathType>1</PathType>
+                  <AttributeType>4</AttributeType>
+                </RegistryAttributeDefinition>
+              </RegistryAttributeDefinitions>
+              <Frequency>$Config/Frequency$</Frequency>
+            </DataSource>
+
+            <ConditionDetection ID="CDPresent"    TypeID="System!System.ExpressionFilter">
+              <Expression>
+                <RegExExpression>
+                  <ValueExpression>
+                    <XPathQuery Type="String">/Values/$Config/AttributeName$</XPathQuery>
+                  </ValueExpression>
+                  <Operator>MatchesRegularExpression</Operator>
+                  <Pattern>$Config/Pattern$</Pattern>
+                </RegExExpression>
+              </Expression>
+            </ConditionDetection>
+
+            <ConditionDetection ID="CDNotPresent" TypeID="System!System.ExpressionFilter">
+              <Expression>
+                <RegExExpression>
+                  <ValueExpression>
+                    <XPathQuery Type="String">/Values/$Config/AttributeName$</XPathQuery>
+                  </ValueExpression>
+                  <Operator>DoesNotMatchRegularExpression</Operator>
+                  <Pattern>$Config/Pattern$</Pattern>
+                </RegExExpression>
+              </Expression>
+            </ConditionDetection>
+          </MemberModules>
+
+          <RegularDetections>
+            <RegularDetection MonitorTypeStateID="Registry Address Present">
+              <Node ID="CDPresent">
+                <Node ID="DS" />
+              </Node>
+            </RegularDetection>
+            <RegularDetection MonitorTypeStateID="Registry Address not Present">
+              <Node ID="CDNotPresent">
+                <Node ID="DS" />
+              </Node>
+            </RegularDetection>
+          </RegularDetections>
+        </MonitorImplementation>
+      </UnitMonitorType>
+    </MonitorTypes>
+  </TypeDefinitions>
+
+  <Monitoring>
+    <Monitors>
+      <UnitMonitor
+        ID="RegistryKeyPROD"
+        Accessibility="Public"
+        TypeID="RegistryKeyPROD.CustomUnitMonitorType"
+        Target="Windows!Microsoft.Windows.Server.OperatingSystem"
+        ParentMonitorID="Health!System.Health.ConfigurationState"
+        ConfirmDelivery="true"
+        Remotable="true"
+        Priority="Normal"
+        Enabled="true">
+
+        <Category>Custom</Category>
+
+        <AlertSettings AlertMessage="RegistryKeyPROD.AlertMessage">
+          <AlertOnState>Registry Address not Present</AlertOnState>
+          <AutoResolve>true</AutoResolve>
+          <AlertPriority>Normal</AlertPriority>
+          <AlertSeverity>Error</AlertSeverity>
+          <AlertParameters>
+            <AlertParameter1>
+              $Target/Property[Type="Windows!Microsoft.Windows.OperatingSystem"]/OSVersionDisplayName$
+            </AlertParameter1>
+          </AlertParameters>
+        </AlertSettings>
+
+        <OperationalStates>
+          <OperationalState
+            ID="Present"
+            MonitorTypeStateID="Registry Address Present"
+            HealthState="Success" />
+          <OperationalState
+            ID="NotPresent"
+            MonitorTypeStateID="Registry Address not Present"
+            HealthState="Error" />
+        </OperationalStates>
+
+        <Configuration>
+          <ComputerName>
+            $Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$
+          </ComputerName>
+          <RegistryPath>
+            HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Citrix\Authentication\UserCredentialService\Addresses
+          </RegistryPath>
+          <AttributeName>Addresses</AttributeName>
+          <Pattern>
+            $Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$
+          </Pattern>
+          <Frequency>30</Frequency>
+        </Configuration>
+      </UnitMonitor>
+    </Monitors>
+  </Monitoring>
+
+  <Presentation>
+    <StringResources>
+      <StringResource ID="RegistryKeyPROD.AlertMessage" />
+    </StringResources>
+  </Presentation>
+
+  <LanguagePacks>
+    <LanguagePack ID="ENU" IsDefault="true">
+      <DisplayStrings>
+        <DisplayString ElementID="RegistryKeyPROD">
+          <Name>RegistryKeyPROD Monitor</Name>
+          <Description>Checks if this server’s name appears under Addresses in the Citrix UserCredentialService key.</Description>
+        </DisplayString>
+        <DisplayString ElementID="RegistryKeyPROD.AlertMessage">
+          <Name>Server name not found in Addresses</Name>
+          <Description>The registry key Addresses does not contain this server’s name. Affected OS: {0}</Description>
+        </DisplayString>
+        <DisplayString ElementID="RegistryKeyPROD" SubElementID="Present">
+          <Name>Registry Address Present</Name>
+        </DisplayString>
+        <DisplayString ElementID="RegistryKeyPROD" SubElementID="NotPresent">
+          <Name>Registry Address not Present</Name>
+        </DisplayString>
+      </DisplayStrings>
+    </LanguagePack>
+  </LanguagePacks>
+
+</ManagementPack>
