@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ManagementPack ContentReadable="true" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Manifest>
+    <Identity>
+      <ID>CompanyX.Registry.Monitor.Fixed</ID>
+      <Version>1.0.0.2</Version>
+    </Identity>
+    <Name>CompanyX.Registry.Monitor.Fixed</Name>
+    <References>
+      <Reference Alias="SC">
+        <ID>Microsoft.SystemCenter.Library</ID>
+        <Version>6.1.7221.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="Windows">
+        <ID>Microsoft.Windows.Library</ID>
+        <Version>6.1.7221.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="Health">
+        <ID>System.Health.Library</ID>
+        <Version>6.1.7221.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="System">
+        <ID>System.Library</ID>
+        <Version>6.1.7221.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+    </References>
+  </Manifest>
+
+  <TypeDefinitions>
+    <MonitorTypes>
+      <UnitMonitorType Accessibility="Internal" ID="CompanyX.Registry.CustomUnitMonitorType">
+        <MonitorTypeStates>
+          <MonitorTypeState ID="Compliant" />
+          <MonitorTypeState ID="NonCompliant" />
+        </MonitorTypeStates>
+        <Configuration>
+          <xsd:element name="ComputerName" type="xsd:string" />
+          <xsd:element name="RegistryPath" type="xsd:string" />
+          <xsd:element name="AttributeName" type="xsd:string" />
+          <xsd:element name="Pattern" type="xsd:string" />
+          <xsd:element name="Frequency" type="xsd:unsignedInt" />
+        </Configuration>
+        <MonitorImplementation>
+          <MemberModules>
+            <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.RegistryProvider">
+              <ComputerName>$Config/ComputerName$</ComputerName>
+              <RegistryAttributeDefinitions>
+                <RegistryAttributeDefinition>
+                  <AttributeName>$Config/AttributeName$</AttributeName>
+                  <Path>$Config/RegistryPath$</Path>
+                  <PathType>1</PathType>
+                  <AttributeType>4</AttributeType>
+                </RegistryAttributeDefinition>
+              </RegistryAttributeDefinitions>
+              <Frequency>$Config/Frequency$</Frequency>
+            </DataSource>
+
+            <ConditionDetection ID="CDGood" TypeID="System!System.ExpressionFilter">
+              <Expression>
+                <RegExExpression>
+                  <ValueExpression>
+                    <XPathQuery Type="String">/Values/$Config/AttributeName$</XPathQuery>
+                  </ValueExpression>
+                  <Operator>MatchesRegularExpression</Operator>
+                  <Pattern>$Config/Pattern$</Pattern>
+                </RegExExpression>
+              </Expression>
+            </ConditionDetection>
+
+            <ConditionDetection ID="CDBad" TypeID="System!System.ExpressionFilter">
+              <Expression>
+                <RegExExpression>
+                  <ValueExpression>
+                    <XPathQuery Type="String">/Values/$Config/AttributeName$</XPathQuery>
+                  </ValueExpression>
+                  <Operator>DoesNotMatchRegularExpression</Operator>
+                  <Pattern>$Config/Pattern$</Pattern>
+                </RegExExpression>
+              </Expression>
+            </ConditionDetection>
+          </MemberModules>
+
+          <RegularDetections>
+            <RegularDetection MonitorTypeStateID="Compliant">
+              <Node ID="CDGood">
+                <Node ID="DS" />
+              </Node>
+            </RegularDetection>
+            <RegularDetection MonitorTypeStateID="NonCompliant">
+              <Node ID="CDBad">
+                <Node ID="DS" />
+              </Node>
+            </RegularDetection>
+          </RegularDetections>
+        </MonitorImplementation>
+      </UnitMonitorType>
+    </MonitorTypes>
+  </TypeDefinitions>
+
+  <Monitoring>
+    <Monitors>
+      <UnitMonitor ID="CompanyX.Registry.ServerLevelMonitor" Accessibility="Public"
+        TypeID="CompanyX.Registry.CustomUnitMonitorType"
+        Target="Windows!Microsoft.Windows.Server.OperatingSystem"
+        ParentMonitorID="Health!System.Health.ConfigurationState"
+        ConfirmDelivery="true" Remotable="true" Priority="Normal" Enabled="true">
+
+        <Category>Custom</Category>
+
+        <AlertSettings AlertMessage="CompanyX.Registry.ServerLevelMonitor.AlertMessage">
+          <AlertOnState>Error</AlertOnState>
+          <AutoResolve>true</AutoResolve>
+          <AlertPriority>Normal</AlertPriority>
+          <AlertSeverity>Error</AlertSeverity>
+          <AlertParameters>
+            <AlertParameter1>$Target/Property[Type="Windows!Microsoft.Windows.OperatingSystem"]/OSVersionDisplayName$</AlertParameter1>
+          </AlertParameters>
+        </AlertSettings>
+
+        <OperationalStates>
+          <OperationalState ID="Healthy" MonitorTypeStateID="Compliant" HealthState="Success" />
+          <OperationalState ID="Unhealthy" MonitorTypeStateID="NonCompliant" HealthState="Error" />
+        </OperationalStates>
+
+        <Configuration>
+          <ComputerName>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$</ComputerName>
+          <RegistryPath>SOFTWARE\CompanyX</RegistryPath>
+          <AttributeName>ServerLevel</AttributeName>
+          <Pattern>^0$</Pattern>
+          <Frequency>30</Frequency>
+        </Configuration>
+      </UnitMonitor>
+    </Monitors>
+  </Monitoring>
+
+  <Presentation>
+    <StringResources>
+      <StringResource ID="CompanyX.Registry.ServerLevelMonitor.AlertMessage" />
+    </StringResources>
+  </Presentation>
+
+  <LanguagePacks>
+    <LanguagePack ID="ENU" IsDefault="true">
+      <DisplayStrings>
+        <DisplayString ElementID="CompanyX.Registry.ServerLevelMonitor">
+          <Name>ServerLevel Registry Monitor</Name>
+          <Description>Monitors if the registry value 'ServerLevel' under SOFTWARE\CompanyX is 0. Alerts if not.</Description>
+        </DisplayString>
+        <DisplayString ElementID="CompanyX.Registry.ServerLevelMonitor.AlertMessage">
+          <Name>ServerLevel value is not compliant</Name>
+          <Description>The registry value 'ServerLevel' is not 0. Affected OS: {0}</Description>
+        </DisplayString>
+        <DisplayString ElementID="CompanyX.Registry.ServerLevelMonitor" SubElementID="Healthy">
+          <Name>Compliant (Value = 0)</Name>
+        </DisplayString>
+        <DisplayString ElementID="CompanyX.Registry.ServerLevelMonitor" SubElementID="Unhealthy">
+          <Name>Non-Compliant (Value ≠ 0)</Name>
+        </DisplayString>
+      </DisplayStrings>
+    </LanguagePack>
+  </LanguagePacks>
+</ManagementPack>
